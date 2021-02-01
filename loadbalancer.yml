@@ -4,3 +4,25 @@
   tasks:
      - name: Install nginx
        apt: name=nginx state=present update_cache=yes
+
+     - name: ensure nginx started
+       service: name=nginx state=started enabled=yes
+
+     - name: create a demo directory in load balancer server
+       file: path=/etc/nginx/sites-available/demo/ state=directory
+
+     - name: configure nginx site
+       template: src=/home/ansible/ansible-playbooks/templates/nginx.conf.j2 dest=/etc/nginx/sites-available/demo/nginx.conf.j2 mode=0644
+       notify: Restart nginx
+
+     - name: de-activate nginx default site
+       file: path=/etc/nginx/sites-available/default state=absent
+       notify: Restart nginx
+
+     - name: activate demo nginx site
+       file: src=/etc/nginx/sites-available/demo/nginx.conf.j2 dest=/etc/nginx/sites-enabled/nginx.conf.j2 state=link
+       notify: Restart nginx
+
+  handlers:
+     - name: Restart nginx
+       service: name=nginx state=restarted

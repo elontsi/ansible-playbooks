@@ -1,0 +1,43 @@
+---
+
+- hosts: webservers
+  become: true
+  tasks:
+          - name: Installing apache2
+            apt: name={{item}} state=present update_cache=yes
+            with_items:
+                    - apache2
+                    - libapache2-mod-wsgi
+                    - python3-pip
+                    - python3-virtualenv  
+ 
+          - name: Ensure apache2 is started 
+            service: name=apache2 state=started enabled=yes
+
+          - name: Ensure mod_wsgi enabled
+            apache2_module: state=present name=wsgi
+            notify: Restart apache2
+
+          - name: copy demo app source to ansible playbook directory
+            copy: src=/home/ansible/ansible-playbooks/demo/app/ dest=/var/www/demo mode=0755
+            notify: Restart apache2
+
+          - name: copy apache virtual host config
+            copy: src=/home/ansible/ansible-playbooks/demo/demo.conf  dest=/etc/apache2/sites-available mode=0755
+            notify: Restart apache2
+
+          - name: setup python-virtualenv
+            pip: requirements=/var/www/demo/requirements.txt virtualenv=/var/www/demo/.venv
+            notify: Restart apache2
+
+          - name: de-activate default apache site
+            file: path=/etc/apache2/sites-available/000-default.conf state=absent
+            notify: Restart apache2
+
+          - name: active demo apache2 site
+            file: src=/etc/apache2/sites-available/demo.conf dest=/etc/apache2/sites-enabled/demo.conf state=link
+            notify: Restart apache2 
+
+  handlers:
+          - name: Restart apache2
+            service: name=apache2 state=restarted
