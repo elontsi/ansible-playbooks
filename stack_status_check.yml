@@ -1,0 +1,52 @@
+---
+- hosts: loadbalancer
+  become: true
+  tasks:
+       - name: verify nginx started
+         command: systemctl status nginx
+
+       - name: verify nginx is listening on port 80
+         wait_for: port=80 timeout=1
+
+
+- hosts: webservers
+  become: true
+  tasks:
+       - name: verify apache2 started
+         command: systemctl status apache2
+
+       - name: verify apache2 is listening on port 80
+         wait_for: port=80 timeout=1
+
+
+- hosts: databaseservers
+  become: true
+  tasks:
+       - name: verify mysql started
+         command: systemctl status mysql
+
+       - name: verify mysql is listening on port 80
+         wait_for: port=3306 timeout=1
+
+- hosts: control
+  tasks:
+       - name: Verify end-to-end response
+         uri: url={{item}} return_content=yes
+         with_items: groups.loadbalancer
+         register: ld_index
+
+       - fail: msg="index failed to retrn content"
+         when: "'Hello, from sunny' not in item.content"
+         with_items: "{{lib_index.results}}"
+
+- hosts: loadbalancer
+  tasks:
+       - name: Verify backend response
+         uri: url={{item}} return_content=yes
+         with_items: groups.webservers
+         register: app_index
+
+       - fail: msg="index failed to retrn content"
+         when: "'Hello, from sunny' not in item.content"
+         with_items: "{{lib_index.results}}"
+

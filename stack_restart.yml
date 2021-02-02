@@ -4,7 +4,10 @@
   become: true
   tasks:
           - name: Stopping nginx loadbalancer
-            service: name=nginx state=stopped 
+            service: name=nginx state=stopped
+
+          - name: Making sure nginx is stopped
+            wait_for: port=80 state=drained 
 
 
 - hosts: webservers
@@ -13,11 +16,19 @@
           - name: Stopping apache2 webserver
             service: name=apache2 state=stopped
 
+          - name: Making sure apache2 is stopped
+            wait_for: port=80 state=stopped
+
+
 - hosts: databaseservers
   become: true
   tasks:
           - name: Restarting mysql
             service: name=mysql state=restarted
+
+          - name: Making sure mysql is restarted and listening 
+            wait_for: port=3306 state=started
+
 
 
 # Bringing stack back up
@@ -27,10 +38,16 @@
           - name: Restarting apache2 webserver
             service: name=apache2 state=started
 
+          - name: Making sure apache2 is up
+            wait_for: port=80 state=started
+     
+
 - hosts: loadbalancer
   become: true
   tasks:
           - name: Restarting nginx loadbalancer
             service: name=nginx state=started
 
+          - name: Making sure nginx is up
+            wait_for: port=80 state=started
 
